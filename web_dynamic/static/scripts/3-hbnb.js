@@ -1,64 +1,72 @@
-$(document).ready(function() {
-  // Function to check the API status and update the div#api_status
-  function checkApiStatus() {
-    // Make a GET request to the API endpoint
-    $.ajax({
-      url: 'http://0.0.0.0:5001/api/v1/status/',
-      type: 'GET',
-      success: function(data) {
-        // Check if the status is "OK"
-        if (data.status === 'OK') {
-          // If "OK", add the class "available" to the div#api_status
-          $('#api_status').addClass('available');
-        } else {
-          // If not "OK", remove the class "available" from the div#api_status
-          $('#api_status').removeClass('available');
-        }
-      },
-      error: function() {
-        // In case of an error, remove the class "available" from the div#api_status
-        $('#api_status').removeClass('available');
-      }
-    });
-  }
-
-  // Function to load places from the API and display them
-  function loadPlaces() {
-    // Make a POST request to the places_search endpoint
-    $.ajax({
-      url: 'http://0.0.0.0:5001/api/v1/places_search/',
-      type: 'POST',
-      contentType: 'application/json',
-      data: '{}',
-      success: function(data) {
-        // Clear existing articles in the places section
-        $('.places article').remove();
-
-        // Loop through the results and create article tags for each place
-        for (let place of data) {
-          let article = $('<article>');
-          article.append(`<div class="title_box"><h2>${place.name}</h2><div class="price_by_night">$${place.price_by_night}</div></div>`);
-          article.append(`<div class="information"><div class="max_guest">${place.max_guest} Guest${place.max_guest !== 1 ? 's' : ''}</div><div class="number_rooms">${place.number_rooms} Bedroom${place.number_rooms !== 1 ? 's' : ''}</div><div class="number_bathrooms">${place.number_bathrooms} Bathroom${place.number_bathrooms !== 1 ? 's' : ''}</div></div>`);
-          article.append(`<div class="description">${place.description}</div>`);
-          $('.places').append(article);
-        }
-      },
-      error: function() {
-        console.error('Error loading places from the API.');
-      }
-    });
-  }
-
-  // Call the function to check the API status initially
-  checkApiStatus();
-
-  // Set up an interval to check the API status every 5 seconds (adjust as needed)
-  setInterval(checkApiStatus, 5000);
-
-  // Call the function to load places initially
-  loadPlaces();
-
-  // Set up an interval to reload places every 60 seconds (adjust as needed)
-  setInterval(loadPlaces, 60000);
+const $ = window.$;
+$(document).ready(function () {
+  const myAmenities = {};
+  let myList = [];
+  const checkbox = $('.amenities input[type="checkbox"]');
+  checkbox.prop('checked', false);
+  checkbox.change(function () {
+    const dataId = $(this).attr('data-id');
+    const dataName = $(this).attr('data-name');
+    if (this.checked) {
+      myAmenities[dataId] = dataName;
+    } else {
+      delete (myAmenities[dataId]);
+    }
+    for (const key in myAmenities) {
+      myList.push(myAmenities[key]);
+    }
+    const output = myList.join(', ');
+    $('div.amenities > h4').text(output);
+    myList = [];
+  });
+  const apiStatus = $('div#api_status');
+  $.ajax('http://0.0.0.0:5001/api/v1/status/').done(function (data) {
+    if (data.status === 'OK') {
+      apiStatus.addClass('available');
+    } else {
+      apiStatus.removeClass('available');
+    }
+  });
+  const placesSearch = $.ajax({
+    url: 'http://0.0.0.0:5001/api/v1/places_search/',
+    dataType: 'json',
+    contentType: 'application/json',
+    method: 'POST',
+    data: JSON.stringify({})
+  });
+  placesSearch.done(function (data) {
+    for (let i = 0; i < data.length; i++) {
+      /** Prepare data **/
+      const placeName = data[i].name;
+      const priceByNight = data[i].price_by_night;
+      const maxGuest = data[i].max_guest;
+      const maxRooms = data[i].number_rooms;
+      const maxBathrooms = data[i].number_bathrooms;
+      const desc = data[i].description;
+      /** Prepare HTML **/
+      const article = $('<article></article>');
+      const titleBox = $("<div class='title_box'><h2></h2><div class='price_by_night'></div></div>");
+      titleBox.find('> h2').html(placeName);
+      titleBox.find('.price_by_night').html('$' + priceByNight);
+      article.append(titleBox);
+      const information = $("<div class='information'></div>");
+      let guestString = ' Guest';
+      if (maxGuest > 1) { guestString = ' Guests'; }
+      const guest = $("<div class='max_guest'></div>").html(maxGuest + guestString);
+      information.append(guest);
+      let roomString = ' Bedroom';
+      if (maxRooms > 1) { roomString = ' Bedrooms'; }
+      const rooms = $("<div class='number_rooms'></div>").html(maxRooms + roomString);
+      information.append(rooms);
+      let bathString = ' Bathroom';
+      if (maxBathrooms > 1) { bathString = ' Bathrooms'; }
+      const bathrooms = $("<div class='number_bathrooms'></div>").html(maxBathrooms + bathString);
+      information.append(bathrooms);
+      article.append(information);
+      const description = $("<div class='description'></div>").html(desc);
+      article.append(description);
+      $('section.places').append(article);
+    }
+  });
 });
 
